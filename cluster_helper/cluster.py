@@ -16,6 +16,7 @@ import uuid
 import shutil
 import subprocess
 import time
+import re
 from distutils.version import LooseVersion
 import sys
 
