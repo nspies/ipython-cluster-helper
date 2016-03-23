@@ -680,20 +680,18 @@ class BcbioPBSPROEngineSetLauncher(PBSPROLauncher, launcher.BatchClusterAppMixin
 #PBS -V
 #PBS -N {tag}-e
 {resources}
-{array_cmd}
 cd $PBS_O_WORKDIR
 {cmd}
 """)
 
     def start(self, n):
-        resources = "#PBS -l select=1:ncpus=%d" % (self.cores * self.numengines)
+        resources = "#PBS -l select=%d:ncpus=%d" % (n, self.cores * self.numengines)
         if self.mem:
             resources += ":mem=%smb" % int(float(self.mem) * 1024 * self.numengines)
         resources = "\n".join([resources] + _prep_pbspro_resources(self.resources))
         self.context["resources"] = resources
         self.context["cores"] = self.cores
         self.context["tag"] = self.tag if self.tag else "bcbio"
-        self.context["array_cmd"] = "" if n == 1 else "#PBS -J 1-%i" % n
         self.context["cmd"] = get_engine_commands(self.context, self.numengines)
         return super(BcbioPBSPROEngineSetLauncher, self).start(n)
 
