@@ -661,7 +661,9 @@ class PBSPROLauncher(launcher.PBSLauncher):
 
 class BcbioPBSPROEngineSetLauncher(PBSPROLauncher, launcher.BatchClusterAppMixin):
     """Launch Engines using PBSPro"""
-    batch_file_name = Unicode(u'pbspro_engines', config=True,
+
+    batch_file_name = Unicode(unicode('pbspro_engines' + str(uuid.uuid4())),
+                              config=True,
                               help="batch file name for the engine(s) job.")
     tag = traitlets.Unicode("", config=True)
     cores = traitlets.Integer(1, config=True)
@@ -690,7 +692,8 @@ cd $PBS_O_WORKDIR
 class BcbioPBSPROControllerLauncher(PBSPROLauncher, launcher.BatchClusterAppMixin):
     """Launch a controller using PBSPro."""
 
-    batch_file_name = Unicode(u'pbspro_controller', config=True,
+    batch_file_name = Unicode(unicode("pbspro_controller" + str(uuid.uuid4())),
+                              config=True,
                               help="batch file name for the controller job.")
     tag = traitlets.Unicode("", config=True)
     cores = traitlets.Integer(1, config=True)
