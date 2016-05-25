@@ -33,13 +33,6 @@ from slurm import get_slurm_attributes
 import utils
 import lsf
 
-# Dill not working for complex serialization
-#try:
-#    import dill
-#except ImportError:
-#    dill = None
-dill = None
-
 DEFAULT_MEM_PER_CPU = 1000  # Mb
 
 # ## Custom launchers
