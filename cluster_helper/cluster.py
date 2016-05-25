@@ -679,15 +679,18 @@ cd $PBS_O_WORKDIR
 """)
 
     def start(self, n):
-        resources = "#PBS -l select=1:ncpus=%d" % (self.cores * self.numengines)
+        resources = "#PBS -l select=1:ncpus=%d" % (self.cores * 1)
         if self.mem:
-            resources += ":mem=%smb" % int(float(self.mem) * 1024 * self.numengines)
+            resources += ":mem=%smb" % int(float(self.mem) * 1024 * 1)
         resources = "\n".join([resources] + _prep_pbspro_resources(self.resources))
         self.context["resources"] = resources
         self.context["cores"] = self.cores
         self.context["tag"] = self.tag if self.tag else "bcbio"
-        self.context["cmd"] = get_engine_commands(self.context, self.numengines)
-        return super(BcbioPBSPROEngineSetLauncher, self).start(n)
+        self.context["cmd"] = get_engine_commands(self.context, 1)
+        self.write_batch_script(n)
+        for i in range(n):
+            subprocess.check_call("qsub < %s" % self.batch_file_name, shell=True)
+       # return super(BcbioPBSPROEngineSetLauncher, self).start(n)
 
 class BcbioPBSPROControllerLauncher(PBSPROLauncher, launcher.BatchClusterAppMixin):
     """Launch a controller using PBSPro."""
