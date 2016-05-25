@@ -659,6 +659,18 @@ class PBSPROLauncher(launcher.PBSLauncher):
     job_array_regexp = CRegExp('#PBS\W+-J\W+[\w\d\-\$]+')
     job_array_template = Unicode('')
 
+    def stop(self):
+        job_ids = self.job_id.split(";")
+        for job in job_ids:
+            subprocess.check_call("qdel %s" % job, shell=True)
+
+    def notify_start(self, data):
+        self.log.debug('Process %r started: %r', self.args[0], data)
+        self.start_data = data
+        self.state = 'running'
+        self.job_id = data
+        return data
+
 class BcbioPBSPROEngineSetLauncher(PBSPROLauncher, launcher.BatchClusterAppMixin):
     """Launch Engines using PBSPro"""
 
@@ -679,18 +691,25 @@ cd $PBS_O_WORKDIR
 """)
 
     def start(self, n):
-        resources = "#PBS -l select=1:ncpus=%d" % (self.cores * 1)
+        resources = "#PBS -l select=1:ncpus=%d" % (self.cores * self.numengines)
         if self.mem:
-            resources += ":mem=%smb" % int(float(self.mem) * 1024 * 1)
+            resources += ":mem=%smb" % int(float(self.mem) * 1024 * self.numengines)
         resources = "\n".join([resources] + _prep_pbspro_resources(self.resources))
         self.context["resources"] = resources
         self.context["cores"] = self.cores
         self.context["tag"] = self.tag if self.tag else "bcbio"
-        self.context["cmd"] = get_engine_commands(self.context, 1)
+        self.context["cmd"] = get_engine_commands(self.context, self.numengines)
         self.write_batch_script(n)
+        job_ids = []
+        submit_cmd = "qsub < %s" % self.batch_file_name
         for i in range(n):
-            subprocess.check_call("qsub < %s" % self.batch_file_name, shell=True)
-       # return super(BcbioPBSPROEngineSetLauncher, self).start(n)
+            output = subprocess.check_output("qsub < %s" % self.batch_file_name,
+                                             shell=True)
+            job_ids.append(output.strip())
+        job_id = ";".join(job_ids)
+        self.notify_start(job_id)
+        return job_id
+
 
 class BcbioPBSPROControllerLauncher(PBSPROLauncher, launcher.BatchClusterAppMixin):
     """Launch a controller using PBSPro."""
