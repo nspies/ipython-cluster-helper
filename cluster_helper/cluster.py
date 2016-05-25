@@ -667,13 +667,11 @@ class BcbioPBSPROEngineSetLauncher(PBSPROLauncher, launcher.BatchClusterAppMixin
     cores = traitlets.Integer(1, config=True)
     mem = traitlets.Unicode("", config=True)
     numengines = traitlets.Integer(1, config=True)
-    array_cmd = traitlets.Unicode("", config=True)
     resources = traitlets.Unicode("", config=True)
     default_template = Unicode(u"""#!/bin/sh
 #PBS -V
 #PBS -N {tag}-e
 {resources}
-{array_cmd}
 cd $PBS_O_WORKDIR
 {cmd}
 """)
@@ -686,7 +684,6 @@ cd $PBS_O_WORKDIR
         self.context["resources"] = resources
         self.context["cores"] = self.cores
         self.context["tag"] = self.tag if self.tag else "bcbio"
-        self.context["array_cmd"] = "" if n == 1 else "#PBS -J 1-%i" % n
         self.context["cmd"] = get_engine_commands(self.context, self.numengines)
         return super(BcbioPBSPROEngineSetLauncher, self).start(n)
 
@@ -1002,9 +999,6 @@ class ClusterView(object):
                 self.view = _get_balanced_blocked_view(self.client, retries)
             self.view.clusterhelper = {"profile": self.profile,
                                        "cluster_id": self.cluster_id}
-            if dill:
-                pickleutil.use_dill()
-                self.view.apply(pickleutil.use_dill)
         except:
             self.stop()
             raise
