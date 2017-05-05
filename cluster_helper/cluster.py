@@ -895,10 +895,11 @@ def _start(scheduler, profile, queue, num_jobs, cores_per_job, cluster_id,
     args += _get_profile_args(profile)
     if mincores > 1 and mincores > cores_per_job:
         args += ["--%s.numengines=%s" % (engine_class, mincores)]
-    if specials.get("pename"):
+    pename = specials.get("pename")
+    if pename and pename.lower() != "none":
         if not local_controller:
-            args += ["--%s.pename=%s" % (controller_class, specials["pename"])]
-        args += ["--%s.pename=%s" % (engine_class, specials["pename"])]
+            args += ["--%s.pename=%s" % (controller_class, pename)]
+        args += ["--%s.pename=%s" % (engine_class, pename)]
     if specials.get("memtype"):
         args += ["--%s.memtype=%s" % (engine_class, specials["memtype"])]
     if slurm_atrs:
