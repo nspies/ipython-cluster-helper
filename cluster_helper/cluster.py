@@ -1160,6 +1160,9 @@ def _slurm_is_old():
 def _slurm_version():
     version_line = subprocess.Popen("sinfo -V", shell=True,
                                     stdout=subprocess.PIPE).communicate()[0]
+    if sys.version_info >= (3,):
+        version_line = version_line.decode("utf-8")
+        
     parts = version_line.split()
     if len(parts) > 0:
         return version_line.split()[1]

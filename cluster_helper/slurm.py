@@ -1,4 +1,5 @@
 import subprocess
+import sys
 
 DEFAULT_TIME = "1-00:00:00"
 
@@ -56,6 +57,10 @@ class SlurmTime(object):
             return 1
         return 0
 
+    # required for sorting under python 3 
+    def __lt__(self, slurmtime):
+        return self.__cmp__(slurmtime) < 0
+
     def __repr__(self):
         return("%02d-%02d:%02d:%02d" % (self.days, self.hours, self.minutes, self.seconds))
 
@@ -68,6 +73,9 @@ def get_accounts(user):
     accounts = []
     has_accounts = False
     for line in out.splitlines():
+        if sys.version_info >= (3,):
+            line = line.decode("utf-8")
+
         line = line.split('|')
         account = line[0].strip()
         account_user = line[1].strip()
@@ -93,11 +101,16 @@ def get_user():
 def accounts_with_access(queue):
     cmd = "sinfo --noheader -p {0} -o %g".format(queue)
     out, err = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).communicate()
+    if sys.version_info >= (3,):
+        out = out.decode("utf-8")
+
     return set([x.strip() for x in out.split(",")])
 
 def get_max_timelimit(queue):
     cmd = "sinfo --noheader -p {0}".format(queue)
     out, err = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).communicate()
+    if sys.version_info >= (3,):
+        out = out.decode("utf-8")
     max_limit = out.split()[2].strip()
     time_limit = None if max_limit == "inifinite" else max_limit
     return max_limit
