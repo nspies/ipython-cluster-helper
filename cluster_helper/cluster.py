@@ -25,10 +25,13 @@ from ipyparallel import Client
 from ipyparallel.apps import launcher
 from ipyparallel.apps.launcher import LocalControllerLauncher
 from ipyparallel import error as iperror
+from ipyparallel import serialize
+
 from IPython.paths import locate_profile, get_ipython_dir
 import traitlets
 from traitlets import (List, Unicode, CRegExp)
 from IPython.core.profiledir import ProfileDir
+
 
 from .slurm import get_slurm_attributes
 from . import utils
@@ -959,7 +962,7 @@ class ClusterView(object):
     """
     def __init__(self, scheduler, queue, num_jobs, cores_per_job=1, profile=None,
                  start_wait=16, extra_params=None, retries=None, direct=False,
-                 wait_for_all_engines=False):
+                 wait_for_all_engines=False, pickler=None):
         self.stopped = False
         self.profile = profile
         num_jobs = int(num_jobs)
@@ -1065,9 +1068,9 @@ class ClusterView(object):
             print()
             self.client = Client(url_file, timeout=60)
             if direct:
-                self.view = _get_direct_view(self.client, retries)
+                self.view = _get_direct_view(self.client, retries, pickler)
             else:
-                self.view = _get_balanced_blocked_view(self.client, retries)
+                self.view = _get_balanced_blocked_view(self.client, retries, pickler)
             self.view.clusterhelper = {"profile": self.profile,
                                        "cluster_id": self.cluster_id}
         except:
@@ -1093,7 +1096,7 @@ class ClusterView(object):
 @contextlib.contextmanager
 def cluster_view(scheduler, queue, num_jobs, cores_per_job=1, profile=None,
                  start_wait=16, extra_params=None, retries=None, direct=False,
-                 wait_for_all_engines=False):
+                 wait_for_all_engines=False, pickler=None):
     """Provide a view on an ipython cluster for processing.
 
       - scheduler: The type of cluster to start (lsf, sge, pbs, torque).
@@ -1106,7 +1109,7 @@ def cluster_view(scheduler, queue, num_jobs, cores_per_job=1, profile=None,
     cluster_view = ClusterView(scheduler, queue, num_jobs, cores_per_job=cores_per_job,
                                profile=profile, start_wait=start_wait, extra_params=extra_params,
                                retries=retries, direct=direct,
-                               wait_for_all_engines=wait_for_all_engines)
+                               wait_for_all_engines=wait_for_all_engines, pickler=pickler)
     try:
         yield cluster_view.view
     finally:
@@ -1128,8 +1131,28 @@ def _nengines_up(url_file):
     else:
         return up
 
-def _get_balanced_blocked_view(client, retries):
+def _view_set_pickler(view, pickler):
+    """
+    this basically duplicates the methods of the ipyparallel DirectView which 
+    for some reason aren't available in the LoadBalancedView
+    """
+    
+    if pickler is None:
+        pass
+    elif pickler == "dill":
+        serialize.use_dill()
+        view.apply(serialize.use_dill)
+    elif pickler == "cloudpickle":
+        serialize.use_cloudpickle()
+        view.apply(serialize.use_cloudpickle)
+    else:
+        raise RuntimeError("Unknown pickler {}".format(pickler))
+    
+def _get_balanced_blocked_view(client, retries, pickler=None):
     view = client.load_balanced_view()
+
+    _view_set_pickler(view, pickler)
+    
     view.set_flags(block=True)
     if retries:
         view.set_flags(retries=int(retries))
@@ -1147,8 +1170,10 @@ def _shutdown(client):
     print ("Sending a shutdown signal to the controller and engines.")
     client.close()
 
-def _get_direct_view(client, retries):
+def _get_direct_view(client, retries, pickler=None):
     view = client[:]
+    _view_set_pickler(view, pickler)
+    
     view.set_flags(block=True)
     if retries:
         view.set_flags(retries=int(retries))
